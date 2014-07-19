@@ -35,7 +35,7 @@ def run():
 	logger.debug("Waiting for GPRMC");
 	while line[1:6] != 'GPRMC':
 		line = port.readline().strip().decode("utf-8");
-		print(line[1:6]);
+		#print(line[1:6]);
 	
 	logger.debug("Got GPRMC");
 	
@@ -48,18 +48,40 @@ def run():
 	dt = d[2:4] + d[0:2] + t[0:4] + d[4:] + '.' + t[4:];
 	
 	logger.debug("Setting date: " + dt);
-	subprocess.call(["sudo", "/bin/date",  '-u',  dt]);
+	nl = open("/dev/null", "w");
+	subprocess.call(["sudo", "/bin/date",  '-u',  dt],stdout=nl);
 	
 	# Now need to output status to status file
 	statusfile = config.get('core', 'statusfile');
 	fh = open(statusfile, 'w');
 	fh.write('running');
 	fh.close();
+
+	# Prepare the regular expressions
+#	ggapattern = '[A-Z]+,([0-9]{6}),([0-9\.]+),([A-Z]),([0-9\.]+),([A-Z]),([0-2]),([0-9]{2}),([0-9\.]+),([0-9\.]+),([0-9\.]+)';
+	ggapattern = '\$GPGGA,([0-9]{6}),([0-9\.]+),([NS]),([0-9\.]+),([EW]),([0-2]),([0-9]{2}),([0-9\.]+),([\-]?[0-9]+\.[0-9]),M,([\-]?[0-9]+\.[0-9])';
+	ggare = re.compile(ggapattern);
+	
 	while True:
 		text = port.readline();
-		text = text.strip();
+		text = text.strip().decode("utf-8");
+		
+		if text[0] != '$':
+			# Caught an incomplete line
+			continue;
 		
 		sentence = text[1:6];
-		print(sentence);
+		
+		if sentence == 'GPGGA':
+			# Positional data
+			try:
+				matches = ggare.search(text);
+			except AttributeError:
+				# Invalid data
+				continue;
+			parts = matches.groups();
+			db.cursor.execute('INSERT INTO points VALUES (?,?,?,?,?,?,?,?,?,?)', parts);
+			db.connection.commit();
+#		print(sentence);
 	#	print(text.strip());
 
