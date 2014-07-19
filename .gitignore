@@ -17,3 +17,5 @@ data/*
 # Live config files
 conf/*.conf
 
+# Log files
+log/*
