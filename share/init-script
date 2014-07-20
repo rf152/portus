@@ -1,0 +1,48 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:
+# Required-Start:
+# Required-Stop:  
+# Default-Start:	2 3 4 5
+# Default-Stop:		0 1 6
+# Short-Description:	GPS logging system
+# Description:		portus logs positional and directional data from a
+#			serial GPS device
+### END INIT INFO
+
+DESC="portus daemon"
+NAME=portus
+DAEMON=/opt/portus/bin/portus
+PIDFILE=/opt/portus/portus.pid
+SCRIPTNAME=/etc/init.d/"$NAME"
+ARGUMENTS=""
+
+test -f $DAEMON || exit 0
+
+. /lib/lsb/init-functions
+
+case "$1" in
+start)	log_daemon_msg "Starting Portus" "portus"
+	start-stop-daemon --start --background --exec $DAEMON --pidfile $PIDFILE \
+		--make-pidfile --startas $DAEMON --oknodo --chuid portus -- $ARGUMENTS
+	log_end_msg $?
+	;;
+stop)	log_daemon_msg "Stopping Portus" "portus"
+	start-stop-daemon --stop --pidfile $PIDFILE \
+		--oknodo
+	RETVAL=$?
+	[ $RETVAL -eq 0 ] && [ -e "$PIDFILE" ] && rm -f $PIDFILE
+	log_end_msg $RETVAL
+	;;
+restart) log_damon_msg "Restarting Portus"
+	$0 stop
+	$0 start
+	;;
+status) 
+	status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
+	;;
+*)	log_action_msg "Usage: $0 {start|stop|status|restart}"
+	exit 2
+	;;
+esac
+exit 0
